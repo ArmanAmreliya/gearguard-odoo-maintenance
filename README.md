@@ -1,136 +1,114 @@
-# GearGuard - Maintenance & Asset Management System
+# ⚙️ MainTainPro - Maintenance & Asset Management System
 
-A production-grade internal operations tool for managing equipment maintenance and assets with real-time kanban board, preventive scheduling, and role-based access control.
+A **modern, fast, and visually rich maintenance management web application** built for hackathons and demos.  
+GearGuard helps teams manage **equipment, maintenance workflows, and teams** through a clean dashboard experience.
 
-## Features
+> ⚡ Built for speed, clarity, and impact — not heavy backend complexity.
 
-- **Kanban Board**: Drag-and-drop status management (New → In Progress → Repaired/Scrap)
-- **Preventive Scheduling**: Calendar view for scheduled maintenance
-- **Equipment Management**: Complete inventory tracking with maintenance history
-- **Role-Based Access**: Admin, Technician, and User roles with data filtering
-- **Business Rules**:
-  - Auto-fill maintenance team from equipment
-  - Team-specific technician assignment
-  - Status workflow enforcement
-  - Automatic equipment scrapping logic
-  - Overdue detection with visual indicators
+---
+##  🔗 LIve
+Open 👉 (https://aigeargaurd.lovable.app/)
 
-## Tech Stack
 
-- **Frontend**: Next.js 16 (App Router), React 19, TypeScript
-- **UI**: shadcn/ui, Tailwind CSS v4
-- **Backend**: Next.js API Routes
-- **Database**: Prisma ORM with SQLite
-- **Auth**: JWT-based session management with bcrypt password hashing
+## 🖼️ Preview
 
-## Getting Started
+<p align="center">
+  <img src="/picture.png" alt="GearGuard Dashboard" width="800"/>
+</p>
 
-### Prerequisites
+---
 
-- Node.js 18+
-- npm or yarn
+## ✨ Key Features
 
-### Installation
+- 🚀 Modern SaaS-style **Landing Page**
+- 🔐 **Quick Demo Authentication** (email-based)
+- 📊 **Role-Based Dashboard** (Admin / Technician / User)
+- 🛠️ Equipment Management with images & status
+- 👥 Team & member overview with avatars
+- 📈 Charts, metrics & activity feed
+- 🎨 Glassmorphism UI + smooth animations
+- ⚡ Fast loading using mostly static demo data
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+---
 
-2. Setup environment:
-   ```bash
-   cp .env.local.example .env.local
-   ```
+## 👤 Demo Login (Instant Access)
 
-3. Create database and run migrations:
-   ```bash
-   npx prisma migrate dev
-   ```
+| Role | Email |
+|-----|------|
+| Admin | `admin@demo.com` |
+| Technician | `tech@demo.com` |
+| User | `user@demo.com` |
 
-4. Seed demo data:
-   ```bash
-   npx ts-node scripts/seed.ts
-   ```
+👉 Password: **any value** (demo-only auth)
 
-5. Start development server:
-   ```bash
-   npm run dev
-   ```
+---
 
-Visit http://localhost:3000 and login with demo credentials (see below).
+## 🧰 Tech Stack
 
-## Demo Credentials
+<p align="left">
+  <img src="https://skillicons.dev/icons?i=nextjs,react,tailwind,ts,nodejs" />
+</p>
 
-- **Admin**: admin@gearguard.com / admin123
-- **Technician**: tech@gearguard.com / tech123
-- **User**: user@gearguard.com / user123
+- **Framework**: Next.js (App Router)
+- **UI**: Tailwind CSS + shadcn/ui
+- **Auth**: Demo Auth / NextAuth
+- **Charts**: Recharts
+- **Icons**: Lucide React
+- **Animations**: Framer Motion
+- **Data**: Static JSON (fast & editable)
 
-## API Endpoints
+---
 
-### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout
-- `GET /api/auth/session` - Get current session
+## 📂 Project Structure (Simplified)
 
-### Maintenance Requests
-- `GET /api/requests` - List requests (filtered by role)
-- `POST /api/requests` - Create new request
-- `GET /api/requests/[id]` - Get request details
-- `PATCH /api/requests/[id]` - Update request status
-
-### Equipment
-- `GET /api/equipment` - List all equipment
-- `POST /api/equipment` - Create new equipment (Admin only)
-- `GET /api/equipment/[id]` - Get equipment with maintenance history
-
-### Teams
-- `GET /api/teams` - List all teams with members
-
-## Business Rules
-
-1. **Auto-Fill Logic**: When selecting equipment, maintenance team is automatically assigned
-2. **Team Assignment**: Only technicians from the assigned team can be selected
-3. **Status Workflow**: New → In Progress → Repaired OR Scrap
-4. **Scrap Logic**: Marking request as Scrap automatically sets equipment.isScrapped = true
-5. **Overdue Detection**: Preventive requests past scheduled date (not Repaired/Scrap) show overdue indicator
-6. **Real-Time Persistence**: All drag-and-drop updates immediately persist to database
-
-## Project Structure
-
-```
-├── app/
-│   ├── api/              # API routes
-│   ├── dashboard/        # Main kanban board
-│   ├── equipment/        # Equipment management
-│   ├── admin/            # Admin dashboard
-│   └── login/            # Authentication
-├── components/
-│   ├── ui/               # shadcn/ui components
-│   ├── kanban-board.tsx  # Kanban UI
-│   └── ...               # Feature components
-├── lib/
-│   ├── auth.ts           # Auth utilities
-│   └── service/          # Business logic
-├── prisma/
-│   └── schema.prisma     # Database schema
-└── scripts/
-    └── seed.ts           # Demo data seeding
+```bash
+app/
+ ├─ page.tsx          # Landing page
+ ├─ login/            # Login
+ ├─ dashboard/        # Dashboard
+ ├─ equipment/        # Equipment list & details
+ ├─ teams/            # Teams & members
+components/
+data/                 # Static demo data
 ```
 
-## Development
+## 🚀 Getting Started
+git clone https://github.com/ArmanAmreliya/gearguard-odoo-maintenance.git
+cd gearguard-odoo-maintenance
+npm install
+npm run dev
 
-- Add new components in `/components`
-- Add API routes in `/app/api`
-- Update database schema in `/prisma/schema.prisma`
-- Run migrations: `npx prisma migrate dev`
 
-## Production Deployment
+Open 👉 (https://aigeargaurd.lovable.app/)
 
-1. Update `NEXTAUTH_SECRET` with a strong secret
-2. Configure DATABASE_URL for production database
-3. Build: `npm run build`
-4. Deploy to Vercel or preferred hosting
+🎯 Use Case
 
-## License
+Hackathon demo
 
-MIT
+UI/UX showcase
+
+Internal tool prototype
+
+Maintenance workflow visualization
+
+Odoo-inspired system design
+
+📌 Notes
+
+Backend logic intentionally kept light
+
+Focused on UI, flow, and user experience
+
+Easy to extend with real APIs or database
+
+🏁 Author
+
+Arman Amreliya
+💡 Hackathon Project | Maintenance & Asset Management
+
+⭐ If you like this project, give it a star!
+
+
+---
+
+
