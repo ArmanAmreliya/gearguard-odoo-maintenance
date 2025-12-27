@@ -1,0 +1,102 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(USER)
+  teamId    String?
+  team      MaintenanceTeam? @relation(fields: [teamId], references: [id])
+  createdRequests MaintenanceRequest[] @relation("CreatedBy")
+  assignedRequests MaintenanceRequest[] @relation("AssignedTechnician")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teamId])
+  @@index([role])
+}
+
+enum Role {
+  ADMIN
+  TECHNICIAN
+  USER
+}
+
+model MaintenanceTeam {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  members   User[]
+  equipment Equipment[]
+  requests  MaintenanceRequest[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Equipment {
+  id                   String   @id @default(cuid())
+  name                 String   @unique
+  serialNumber         String   @unique
+  department           String?
+  assignedEmployee     String?
+  physicalLocation     String?
+  purchaseDate         DateTime?
+  warrantyExpiry       DateTime?
+  maintenanceTeamId    String   @db.String
+  maintenanceTeam      MaintenanceTeam @relation(fields: [maintenanceTeamId], references: [id])
+  isScrapped           Boolean  @default(false)
+  requests             MaintenanceRequest[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([maintenanceTeamId])
+  @@index([isScrapped])
+}
+
+model MaintenanceRequest {
+  id                   String   @id @default(cuid())
+  subject              String
+  equipmentId          String
+  equipment            Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  maintenanceTeamId    String
+  maintenanceTeam      MaintenanceTeam @relation(fields: [maintenanceTeamId], references: [id])
+  technicianId         String?
+  technician           User? @relation("AssignedTechnician", fields: [technicianId], references: [id])
+  createdById          String
+  createdBy            User @relation("CreatedBy", fields: [createdById], references: [id])
+  requestType          RequestType
+  scheduledDate        DateTime?
+  durationHours        Int?
+  status               RequestStatus @default(NEW)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([equipmentId])
+  @@index([maintenanceTeamId])
+  @@index([technicianId])
+  @@index([createdById])
+  @@index([status])
+  @@index([scheduledDate])
+}
+
+enum RequestType {
+  CORRECTIVE
+  PREVENTIVE
+}
+
+enum RequestStatus {
+  NEW
+  IN_PROGRESS
+  REPAIRED
+  SCRAP
+}
