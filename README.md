@@ -9,6 +9,9 @@ GearGuard helps teams manage **equipment, maintenance workflows, and teams** thr
 ##  🔗 LIve
 Open 👉 (https://aigeargaurd.lovable.app/)
 
+## 🎥 Video
+https://www.youtube.com/watch?v=bO--nDrUnfU
+
 
 ## 🖼️ Preview
 
