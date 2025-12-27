@@ -78,10 +78,9 @@ cd gearguard-odoo-maintenance
 npm install
 npm run dev
 
+---
 
-Open 👉 (https://aigeargaurd.lovable.app/)
-
-🎯 Use Case
+## 🎯 Use Case
 
 Hackathon demo
 
@@ -93,7 +92,9 @@ Maintenance workflow visualization
 
 Odoo-inspired system design
 
-📌 Notes
+---
+
+## 📌 Notes
 
 Backend logic intentionally kept light
 
@@ -101,7 +102,9 @@ Focused on UI, flow, and user experience
 
 Easy to extend with real APIs or database
 
-🏁 Author
+---
+
+## 🏁 Author
 
 Arman Amreliya
 💡 Hackathon Project | Maintenance & Asset Management
