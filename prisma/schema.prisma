@@ -20,6 +20,8 @@ model User {
   team      MaintenanceTeam? @relation(fields: [teamId], references: [id], onDelete: SetNull)
   createdRequests MaintenanceRequest[] @relation("CreatedBy")
   assignedRequests MaintenanceRequest[] @relation("AssignedTechnician")
+  notifications Notification[] @relation("UserNotifications")
+  notificationPreferences NotificationPreference?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -86,4 +88,42 @@ model MaintenanceRequest {
   @@index([status, equipmentId])
   @@index([status, maintenanceTeamId])
   @@index([requestType, scheduledDate])
+}
+
+model Notification {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  type            String   // "OVERDUE", "DUE_SOON", "COMPLETED", "ASSIGNED", "STATUS_CHANGE"
+  title           String
+  message         String
+  relatedRequestId String?
+  relatedEquipmentId String?
+  read            Boolean  @default(false)
+  readAt          DateTime?
+  sentAt          DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([read])
+  @@index([type])
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+model NotificationPreference {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailOverdue        Boolean  @default(true)
+  emailDueSoon        Boolean  @default(true)
+  emailCompleted      Boolean  @default(true)
+  emailAssigned       Boolean  @default(true)
+  pushNotifications   Boolean  @default(true)
+  inAppNotifications  Boolean  @default(true)
+  notificationFrequency String  @default("IMMEDIATE") // IMMEDIATE, DAILY, WEEKLY
+  quietHoursStart     String?  // "18:00"
+  quietHoursEnd       String?  // "08:00"
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }

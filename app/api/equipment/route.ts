@@ -21,6 +21,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
+    const {
+      name,
+      serialNumber,
+      department,
+      assignedEmployee,
+      physicalLocation,
+      purchaseDate,
       warrantyExpiry,
       maintenanceTeamId,
     } = body

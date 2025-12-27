@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { KanbanBoard } from "@/components/kanban-board"
 import { MaintenanceRequestModal } from "@/components/maintenance-request-modal"
-import { Plus, LogOut, Menu, RefreshCw, CheckCircle2, AlertCircle } from "lucide-react"
+import { NotificationCenter } from "@/components/notification-center"
+import { Plus, LogOut, Menu, RefreshCw, CheckCircle2, AlertCircle, BarChart3, FileText, Bell, Settings } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -176,6 +177,8 @@ export function DashboardClient({
               New Request
             </Button>
 
+            <NotificationCenter />
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button 
@@ -187,7 +190,16 @@ export function DashboardClient({
                   <Menu className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem 
+                  onClick={() => router.push("/dashboard")} 
+                  className="gap-2"
+                  asChild
+                >
+                  <a href="/dashboard">
+                    <span>📊</span> Dashboard
+                  </a>
+                </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={() => router.push("/equipment")} 
                   className="gap-2"
@@ -195,6 +207,15 @@ export function DashboardClient({
                 >
                   <a href="/equipment">
                     <span>📦</span> Equipment
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => router.push("/requests")} 
+                  className="gap-2"
+                  asChild
+                >
+                  <a href="/requests">
+                    <span>📋</span> Requests
                   </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem 
@@ -206,17 +227,71 @@ export function DashboardClient({
                     <span>👥</span> Teams
                   </a>
                 </DropdownMenuItem>
+
+                <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+
+                <DropdownMenuItem 
+                  onClick={() => router.push("/analytics")} 
+                  className="gap-2"
+                  asChild
+                >
+                  <a href="/analytics">
+                    <BarChart3 className="w-4 h-4" />
+                    Analytics
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => router.push("/reports")} 
+                  className="gap-2"
+                  asChild
+                >
+                  <a href="/reports">
+                    <FileText className="w-4 h-4" />
+                    Reports
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => router.push("/notifications/preferences")} 
+                  className="gap-2"
+                  asChild
+                >
+                  <a href="/notifications/preferences">
+                    <Bell className="w-4 h-4" />
+                    Notifications
+                  </a>
+                </DropdownMenuItem>
+
                 {initialSession?.role === "ADMIN" && (
-                  <DropdownMenuItem 
-                    onClick={() => router.push("/admin")} 
-                    className="gap-2"
-                    asChild
-                  >
-                    <a href="/admin">
-                      <span>🔐</span> Admin Panel
-                    </a>
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem 
+                      onClick={() => router.push("/settings")} 
+                      className="gap-2"
+                      asChild
+                    >
+                      <a href="/settings">
+                        <Settings className="w-4 h-4" />
+                        Settings
+                      </a>
+                    </DropdownMenuItem>
+                  </>
                 )}
+
+                {initialSession?.role === "ADMIN" && (
+                  <>
+                    <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+                    <DropdownMenuItem 
+                      onClick={() => router.push("/admin")} 
+                      className="gap-2"
+                      asChild
+                    >
+                      <a href="/admin">
+                        <span>🔐</span> Admin Panel
+                      </a>
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
                 <DropdownMenuItem 
                   onClick={handleLogout} 
                   className="text-destructive gap-2"
