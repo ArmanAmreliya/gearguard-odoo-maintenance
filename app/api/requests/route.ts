@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { getSession } from "@/lib/auth"
 import { validateMaintenanceRequest } from "@/lib/service/maintenance-request.service"
 import { successResponse, errorResponse } from "@/lib/api-helpers"
+import { revalidatePath } from "next/cache"
 
 export async function GET(request: NextRequest) {
   const session = await getSession()
@@ -27,16 +28,24 @@ export async function GET(request: NextRequest) {
 
     const requests = await prisma.maintenanceRequest.findMany({
       where,
-      include: {
-        equipment: true,
-        maintenanceTeam: true,
-        technician: { select: { id: true, name: true, email: true } },
+      select: {
+        id: true,
+        subject: true,
+        status: true,
+        requestType: true,
+        priority: true,
+        scheduledDate: true,
+        createdAt: true,
+        equipment: { select: { id: true, name: true } },
+        maintenanceTeam: { select: { id: true, name: true } },
+        assignedTechnician: { select: { id: true, name: true, email: true } },
         createdBy: { select: { id: true, name: true, email: true } },
       },
       orderBy: { createdAt: "desc" },
     })
 
-    return successResponse(requests)
+    // Dynamic data - no cache
+    return successResponse(requests, 200, { "Cache-Control": "no-store" })
   } catch (error: any) {
     return errorResponse(error.message, 500)
   }
@@ -77,6 +86,12 @@ export async function POST(request: NextRequest) {
         createdBy: { select: { id: true, name: true, email: true } },
       },
     })
+
+    // Revalidate affected routes
+    revalidatePath("/dashboard")
+    revalidatePath("/equipment")
+    
+    console.log("✅ Request created, revalidated dashboard and equipment pages")
 
     return successResponse(newRequest, 201)
   } catch (error: any) {

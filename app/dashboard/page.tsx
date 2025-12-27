@@ -1,187 +1,202 @@
-"use client"
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { KanbanBoard } from "@/components/kanban-board"
-import { MaintenanceRequestModal } from "@/components/maintenance-request-modal"
-import { Plus, LogOut, Menu } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Suspense } from "react"
+import { redirect } from "next/navigation"
+import { getSession } from "@/lib/auth"
+import { DashboardClient } from "@/components/dashboard-client"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { AlertTriangle, Calendar, Clock, TrendingUp, AlertCircle, Package, Users, Zap } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 
-interface Request {
-  id: string
-  subject: string
-  status: string
-  requestType: string
-  scheduledDate: string | null
-  equipment: { name: string }
-  technician: { name: string; id: string } | null
-  createdBy: { name: string }
+interface DashboardInsights {
+  highRiskEquipmentCount: number
+  equipmentNeedingMaintenanceSoon: number
+  averageDowntimePerEquipment: number
+  correctiveVsPreventiveRatio: string
+  totalRequests: number
+  correctiveCount: number
+  preventiveCount: number
+  statusCounts: Record<string, number>
+  totalEquipment?: number
+  activeTeams?: number
 }
 
-interface Equipment {
-  id: string
-  name: string
-  maintenanceTeamId: string
+/**
+ * Fetch role-specific dashboard data
+ * 
+ * - Server-side component: safe to fetch sensitive data
+ * - ADMIN: Full metrics and all requests
+ * - TECHNICIAN: Team-assigned requests only
+ * - USER: User's own requests only
+ * - Proper cache headers based on data type
+ */
+async function getDashboardData() {
+  const session = await getSession()
+  
+  if (!session) {
+    redirect("/login")
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+
+  // Fetch all data in parallel with appropriate caching
+  const [requestsRes, equipmentRes, teamsRes, insightsRes] = await Promise.all([
+    fetch(`${baseUrl}/api/requests`, {
+      cache: "no-store", // Dynamic user-specific data
+    }),
+    fetch(`${baseUrl}/api/equipment`, {
+      cache: "force-cache",
+      next: { revalidate: 60 }, // Equipment data can be cached longer
+    }),
+    fetch(`${baseUrl}/api/teams`, {
+      cache: "force-cache",
+      next: { revalidate: 60 },
+    }),
+    fetch(`${baseUrl}/api/dashboard/insights`, {
+      cache: "no-store", // Dynamic metrics - always fresh
+    }),
+  ])
+
+  const requests = requestsRes.ok ? await requestsRes.json() : []
+  const equipment = equipmentRes.ok ? await equipmentRes.json() : []
+  const teams = teamsRes.ok ? await teamsRes.json() : []
+  const insights = insightsRes.ok ? await insightsRes.json() : null
+
+  // Extract technicians from teams with defensive checks
+  const technicians = Array.isArray(teams) 
+    ? teams.flatMap((team: any) => Array.isArray(team.members) ? team.members : [])
+    : []
+
+  return {
+    session,
+    requests: Array.isArray(requests) ? requests : [],
+    equipment: Array.isArray(equipment) ? equipment : [],
+    technicians,
+    insights,
+  }
 }
 
-interface Technician {
-  id: string
-  name: string
-  teamId: string
-}
-
-interface Session {
-  userId: string
-  email: string
-  name: string
-  role: "ADMIN" | "TECHNICIAN" | "USER"
-  teamId: string | null
-}
-
-export default function DashboardPage() {
-  const router = useRouter()
-  const [session, setSession] = useState<Session | null>(null)
-  const [requests, setRequests] = useState<Request[]>([])
-  const [equipment, setEquipment] = useState<Equipment[]>([])
-  const [technicians, setTechnicians] = useState<Technician[]>([])
-  const [loading, setLoading] = useState(true)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<string | null>(null)
-
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  async function loadData() {
-    try {
-      const sessionRes = await fetch("/api/auth/session")
-      if (!sessionRes.ok) {
-        router.push("/login")
-        return
-      }
-
-      const sessionData = await sessionRes.json()
-      setSession(sessionData)
-
-      const [reqRes, eqRes, teamRes] = await Promise.all([
-        fetch(`/api/requests${statusFilter ? `?status=${statusFilter}` : ""}`),
-        fetch("/api/equipment"),
-        fetch("/api/teams"),
-      ])
-
-      if (reqRes.ok) setRequests(await reqRes.json())
-      if (eqRes.ok) {
-        const eqData = await eqRes.json()
-        setEquipment(eqData)
-        const techs = eqData.flatMap((eq: any) => eq.maintenanceTeam?.members || [])
-        setTechnicians(techs)
-      }
-    } catch (error) {
-      console.error("Failed to load data:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleCreateRequest(data: any) {
-    try {
-      const res = await fetch("/api/requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      })
-
-      if (!res.ok) throw new Error("Failed to create request")
-
-      loadData()
-    } catch (error: any) {
-      throw error
-    }
-  }
-
-  async function handleStatusChange(requestId: string, newStatus: string) {
-    try {
-      const res = await fetch(`/api/requests/${requestId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      })
-
-      if (!res.ok) throw new Error("Failed to update request")
-
-      loadData()
-    } catch (error) {
-      console.error("Failed to update status:", error)
-    }
-  }
-
-  async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" })
-    router.push("/login")
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Loading...</p>
+function DashboardSkeleton() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i}>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-4 w-32" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-16 mb-2" />
+              <Skeleton className="h-3 w-24" />
+            </CardContent>
+          </Card>
+        ))}
       </div>
-    )
-  }
+      <Skeleton className="h-96 w-full" />
+    </div>
+  )
+}
+
+/**
+ * InsightsCards Component
+ * 
+ * Displays KPI cards with proper null handling and semantic HTML.
+ * - Accessible: Uses proper heading hierarchy
+ * - Responsive: Grid adapts to screen size
+ * - Safe: Defensive checks on all data
+ */
+function InsightsCards({ insights }: { insights: DashboardInsights | null }) {
+  if (!insights) return null
+
+  const pendingCount = insights.statusCounts?.["PENDING"] || 0
+  const inProgressCount = insights.statusCounts?.["IN_PROGRESS"] || 0
+  const completedCount = insights.statusCounts?.["COMPLETED"] || 0
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b">
-        <div className="flex items-center justify-between p-4">
-          <div>
-            <h1 className="text-2xl font-bold">GearGuard</h1>
-            <p className="text-sm text-muted-foreground">
-              {session?.name} ({session?.role})
-            </p>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* Total Requests Card */}
+      <Card className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
+          <AlertCircle className="w-4 h-4 text-blue-500" aria-hidden="true" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-3xl font-bold text-slate-900 dark:text-white">
+            {insights.totalRequests}
           </div>
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+            <span className="font-semibold">{pendingCount}</span> pending • 
+            <span className="font-semibold ml-1">{inProgressCount}</span> in progress •
+            <span className="font-semibold ml-1">{completedCount}</span> completed
+          </p>
+        </CardContent>
+      </Card>
 
-          <div className="flex items-center gap-2">
-            <Button onClick={() => setModalOpen(true)} className="gap-2">
-              <Plus className="w-4 h-4" />
-              New Request
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Menu className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => router.push("/equipment")}>Equipment</DropdownMenuItem>
-                {session?.role === "ADMIN" && (
-                  <DropdownMenuItem onClick={() => router.push("/admin")}>Admin Panel</DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+      {/* High-Risk Equipment Card */}
+      <Card className="hover:shadow-md transition-shadow border-l-4 border-l-red-500">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">High-Risk Equipment</CardTitle>
+          <AlertTriangle className="w-4 h-4 text-red-600" aria-hidden="true" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-3xl font-bold text-red-600 dark:text-red-400">
+            {insights.highRiskEquipmentCount}
           </div>
-        </div>
-      </header>
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+            Requires immediate attention
+          </p>
+        </CardContent>
+      </Card>
 
-      {/* Main Content */}
-      <main className="p-6">
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">Maintenance Requests</h2>
-        </div>
+      {/* Maintenance Due Card */}
+      <Card className="hover:shadow-md transition-shadow border-l-4 border-l-amber-500">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Maintenance Due</CardTitle>
+          <Calendar className="w-4 h-4 text-amber-600" aria-hidden="true" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+            {insights.equipmentNeedingMaintenanceSoon}
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+            Due within 7 days
+          </p>
+        </CardContent>
+      </Card>
 
-        <KanbanBoard requests={requests} onStatusChange={handleStatusChange} loading={loading} />
+      {/* Equipment Inventory Card */}
+      <Card className="hover:shadow-md transition-shadow border-l-4 border-l-green-500">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Equipment</CardTitle>
+          <Package className="w-4 h-4 text-green-600" aria-hidden="true" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+            {insights.totalEquipment || 0}
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+            Active assets
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
 
-        <MaintenanceRequestModal
-          open={modalOpen}
-          onOpenChange={setModalOpen}
-          onSubmit={handleCreateRequest}
-          equipment={equipment}
-          technicians={technicians}
-        />
+export default async function DashboardPage() {
+  const data = await getDashboardData()
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <main className="p-6 max-w-7xl mx-auto">
+        <Suspense fallback={<DashboardSkeleton />}>
+          <InsightsCards insights={data.insights} />
+          <DashboardClient
+            initialSession={data.session}
+            initialRequests={data.requests}
+            initialEquipment={data.equipment}
+            initialTechnicians={data.technicians}
+            initialInsights={data.insights}
+          />
+        </Suspense>
       </main>
     </div>
   )

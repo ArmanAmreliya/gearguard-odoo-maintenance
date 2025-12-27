@@ -15,9 +15,9 @@ model User {
   email     String   @unique
   password  String
   name      String
-  role      Role     @default(USER)
+  role      String   @default("USER")
   teamId    String?
-  team      MaintenanceTeam? @relation(fields: [teamId], references: [id])
+  team      MaintenanceTeam? @relation(fields: [teamId], references: [id], onDelete: SetNull)
   createdRequests MaintenanceRequest[] @relation("CreatedBy")
   assignedRequests MaintenanceRequest[] @relation("AssignedTechnician")
   createdAt DateTime @default(now())
@@ -25,12 +25,6 @@ model User {
 
   @@index([teamId])
   @@index([role])
-}
-
-enum Role {
-  ADMIN
-  TECHNICIAN
-  USER
 }
 
 model MaintenanceTeam {
@@ -52,8 +46,8 @@ model Equipment {
   physicalLocation     String?
   purchaseDate         DateTime?
   warrantyExpiry       DateTime?
-  maintenanceTeamId    String   @db.String
-  maintenanceTeam      MaintenanceTeam @relation(fields: [maintenanceTeamId], references: [id])
+  maintenanceTeamId    String
+  maintenanceTeam      MaintenanceTeam @relation(fields: [maintenanceTeamId], references: [id], onDelete: Restrict)
   isScrapped           Boolean  @default(false)
   requests             MaintenanceRequest[]
   createdAt            DateTime @default(now())
@@ -61,6 +55,7 @@ model Equipment {
 
   @@index([maintenanceTeamId])
   @@index([isScrapped])
+  @@index([maintenanceTeamId, isScrapped])
 }
 
 model MaintenanceRequest {
@@ -69,15 +64,15 @@ model MaintenanceRequest {
   equipmentId          String
   equipment            Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
   maintenanceTeamId    String
-  maintenanceTeam      MaintenanceTeam @relation(fields: [maintenanceTeamId], references: [id])
+  maintenanceTeam      MaintenanceTeam @relation(fields: [maintenanceTeamId], references: [id], onDelete: Restrict)
   technicianId         String?
-  technician           User? @relation("AssignedTechnician", fields: [technicianId], references: [id])
+  technician           User? @relation("AssignedTechnician", fields: [technicianId], references: [id], onDelete: SetNull)
   createdById          String
-  createdBy            User @relation("CreatedBy", fields: [createdById], references: [id])
-  requestType          RequestType
+  createdBy            User @relation("CreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  requestType          String
   scheduledDate        DateTime?
   durationHours        Int?
-  status               RequestStatus @default(NEW)
+  status               String @default("NEW")
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -87,16 +82,8 @@ model MaintenanceRequest {
   @@index([createdById])
   @@index([status])
   @@index([scheduledDate])
-}
-
-enum RequestType {
-  CORRECTIVE
-  PREVENTIVE
-}
-
-enum RequestStatus {
-  NEW
-  IN_PROGRESS
-  REPAIRED
-  SCRAP
+  @@index([requestType])
+  @@index([status, equipmentId])
+  @@index([status, maintenanceTeamId])
+  @@index([requestType, scheduledDate])
 }

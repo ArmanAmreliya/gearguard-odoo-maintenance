@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/auth"
-import { evaluateEquipmentHealth } from "./equipment-health"
 
 export interface Equipment {
   id: string
@@ -343,81 +342,3 @@ export async function deleteEquipment(id: string) {
     where: { id },
   })
 }
-
-/**
- * Calculate comprehensive analytics for equipment maintenance history
- * AI-ready structured data for predictive maintenance and insights
- * 
- * @param requests - Array of maintenance requests for the equipment
- * @returns Analytics object with metrics suitable for ML models
- */
-export function calculateEquipmentAnalytics(requests: any[]): EquipmentAnalytics {
-  const totalRequests = requests.length
-  const correctiveRequests = requests.filter((r) => r.requestType === "CORRECTIVE").length
-  const preventiveRequests = requests.filter((r) => r.requestType === "PREVENTIVE").length
-
-  const totalDowntimeHours = requests.reduce(
-    (sum, r) => sum + (r.durationHours || 0),
-    0
-  )
-
-  const requestsWithDuration = requests.filter((r) => r.durationHours)
-  const averageDowntimePerRequest = requestsWithDuration.length > 0
-    ? totalDowntimeHours / requestsWithDuration.length
-    : 0
-
-  const statusBreakdown = {
-    new: requests.filter((r) => r.status === "NEW").length,
-    inProgress: requests.filter((r) => r.status === "IN_PROGRESS").length,
-    repaired: requests.filter((r) => r.status === "REPAIRED").length,
-    scrap: requests.filter((r) => r.status === "SCRAP").length,
-  }
-
-  const lastMaintenanceDate = requests.length > 0 ? requests[0].createdAt : null
-
-  return {
-    totalRequests,
-    correctiveRequests,
-    preventiveRequests,
-    totalDowntimeHours,
-    statusBreakdown,
-    averageDowntimePerRequest,
-    lastMaintenanceDate,
-  }
-}
-
-/**
- * Get equipment with full maintenance history and analytics
- * Optimized for AI model training and dashboard visualizations
- * 
- * @param equipmentId - Equipment ID
- * @returns Equipment with requests and calculated analytics
- */
-export async function getEquipmentHistory(equipmentId: string) {
-  const equipment = await prisma.equipment.findUnique({
-    where: { id: equipmentId },
-    include: {
-      maintenanceTeam: true,
-      requests: {
-        include: {
-          technician: { select: { id: true, name: true, email: true } },
-          createdBy: { select: { id: true, name: true, email: true } },
-          maintenanceTeam: { select: { id: true, name: true } },
-        },
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  })
-
-  if (!equipment) return null
-
-  const analytics = calculateEquipmentAnalytics(equipment.requests)
-  const healthEvaluation = evaluateEquipmentHealth(equipment.requests)
-
-  return {
-    ...equipment,
-    analytics,
-    health: healthEvaluation,
-  }
-}
-

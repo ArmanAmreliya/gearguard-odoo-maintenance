@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation"
 import { getSession } from "@/lib/auth"
-import { prisma } from "@/lib/db"
+import { prisma } from "@/lib/auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Wrench, AlertCircle } from "lucide-react"
+import { ArrowLeft, Wrench, AlertCircle, Calendar } from "lucide-react"
 import Link from "next/link"
 
 interface EquipmentDetailProps {
@@ -32,6 +32,9 @@ export default async function EquipmentDetailPage({ params }: EquipmentDetailPro
       include: {
         maintenanceTeam: true,
         requests: {
+          include: {
+            assignedTo: true,
+          },
           orderBy: {
             createdAt: "desc",
           },
@@ -150,7 +153,7 @@ export default async function EquipmentDetailPage({ params }: EquipmentDetailPro
                   <label className="text-sm text-slate-600 dark:text-slate-400">Last Serviced</label>
                   {lastServicedRequest ? (
                     <p className="text-base font-medium">
-                      {new Date(lastServicedRequest.createdAt).toLocaleDateString()}
+                      {new Date(lastServicedRequest.completedDate || lastServicedRequest.createdAt).toLocaleDateString()}
                     </p>
                   ) : (
                     <p className="text-sm text-slate-500">Never serviced</p>
@@ -175,9 +178,9 @@ export default async function EquipmentDetailPage({ params }: EquipmentDetailPro
                     <TableHeader>
                       <TableRow>
                         <TableHead>Request ID</TableHead>
-                        <TableHead>Subject</TableHead>
+                        <TableHead>Title</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Type</TableHead>
+                        <TableHead>Priority</TableHead>
                         <TableHead>Date</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -185,7 +188,7 @@ export default async function EquipmentDetailPage({ params }: EquipmentDetailPro
                       {equipment.requests.map((request) => (
                         <TableRow key={request.id}>
                           <TableCell className="font-mono text-sm">{request.id.slice(0, 8)}</TableCell>
-                          <TableCell className="font-medium">{request.subject}</TableCell>
+                          <TableCell className="font-medium">{request.title}</TableCell>
                           <TableCell>
                             <Badge
                               variant={
@@ -202,12 +205,14 @@ export default async function EquipmentDetailPage({ params }: EquipmentDetailPro
                           <TableCell>
                             <Badge
                               variant={
-                                request.requestType === "CORRECTIVE"
+                                request.priority === "HIGH"
                                   ? "destructive"
-                                  : "secondary"
+                                  : request.priority === "MEDIUM"
+                                    ? "secondary"
+                                    : "outline"
                               }
                             >
-                              {request.requestType}
+                              {request.priority}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm text-slate-600 dark:text-slate-400">

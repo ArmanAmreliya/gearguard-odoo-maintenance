@@ -1,31 +1,15 @@
 import type { NextRequest } from "next/server"
-import { prisma } from "@/lib/db"
-import { getSession } from "@/lib/auth"
-import { successResponse, errorResponse } from "@/lib/api-helpers"
+import { getSession, successResponse, errorResponse } from "@/lib/auth"
+import { getAllEquipment, createEquipment } from "@/lib/service/equipment-service"
 
 export async function GET(request: NextRequest) {
   const session = await getSession()
   if (!session) return errorResponse("Unauthorized", 401)
 
   try {
-    const { searchParams } = new URL(request.url)
-    const teamId = searchParams.get("teamId") || undefined
-
-    const where: any = {}
-    if (teamId) where.maintenanceTeamId = teamId
-
-    const equipment = await prisma.equipment.findMany({
-      where,
-      include: {
-        maintenanceTeam: true,
-        _count: {
-          select: { requests: true },
-        },
-      },
-      orderBy: { name: "asc" },
-    })
-
-    return successResponse(equipment)
+    const equipment = await getAllEquipment()
+    // Public equipment data - cache for 60 seconds
+    return successResponse(equipment, 200, { "Cache-Control": "public, max-age=60, s-maxage=60" })
   } catch (error: any) {
     return errorResponse(error.message, 500)
   }
@@ -35,19 +19,8 @@ export async function POST(request: NextRequest) {
   const session = await getSession()
   if (!session) return errorResponse("Unauthorized", 401)
 
-  if (session.role !== "ADMIN") {
-    return errorResponse("Only admins can create equipment", 403)
-  }
-
   try {
     const body = await request.json()
-    const {
-      name,
-      serialNumber,
-      department,
-      assignedEmployee,
-      physicalLocation,
-      purchaseDate,
       warrantyExpiry,
       maintenanceTeamId,
     } = body

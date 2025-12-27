@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { isRequestOverdue } from "./overdue"
 
 // Business Rules Validation
 export async function validateMaintenanceRequest(
@@ -46,10 +47,8 @@ export async function handleScrapLogic(requestId: string, equipmentId: string) {
   })
 }
 
-export async function isOverdue(request: any): boolean {
-  if (!request.scheduledDate) return false
-  return new Date(request.scheduledDate) < new Date() && !["REPAIRED", "SCRAP"].includes(request.status)
-}
+// Re-export shared overdue logic for backward compatibility
+export { isRequestOverdue as isOverdue } from "./overdue"
 
 export async function getMaintenanceRequests(teamId?: string, technicianId?: string, status?: string) {
   const where: any = {}

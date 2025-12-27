@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { getSession } from "@/lib/auth"
 import { validateStatusTransition, handleScrapLogic } from "@/lib/service/maintenance-request.service"
 import { successResponse, errorResponse } from "@/lib/api-helpers"
+import { revalidatePath } from "next/cache"
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await getSession()
@@ -35,7 +36,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const body = await request.json()
     const { status, technicianId, durationHours } = body
 
-    const existing = await prisma.maintenanceRequest.findUnique({ where: { id: params.id } })
+    const existing = await prisma.maintenanceRequest.findUnique({ 
+      where: { id: params.id },
+      include: { equipment: true }
+    })
     if (!existing) return errorResponse("Request not found", 404)
 
     // Validate status transition
@@ -51,25 +55,38 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       }
     }
 
-    // Handle scrap status
-    if (status === "SCRAP" && existing.status !== "SCRAP") {
-      await handleScrapLogic(params.id, existing.equipmentId)
-    }
+    // Atomic transaction for scrap cascading or normal update
+    const updated = await prisma.$transaction(async (tx) => {
+      // Handle scrap status - cascade to equipment
+      if (status === "SCRAP" && existing.status !== "SCRAP") {
+        await tx.equipment.update({
+          where: { id: existing.equipmentId },
+          data: { isScrapped: true },
+        })
+      }
 
-    const updated = await prisma.maintenanceRequest.update({
-      where: { id: params.id },
-      data: {
-        status,
-        technicianId,
-        durationHours,
-      },
-      include: {
-        equipment: true,
-        maintenanceTeam: true,
-        technician: { select: { id: true, name: true, email: true } },
-        createdBy: { select: { id: true, name: true, email: true } },
-      },
+      // Update the maintenance request
+      return tx.maintenanceRequest.update({
+        where: { id: params.id },
+        data: {
+          status,
+          technicianId,
+          durationHours,
+        },
+        include: {
+          equipment: true,
+          maintenanceTeam: true,
+          technician: { select: { id: true, name: true, email: true } },
+          createdBy: { select: { id: true, name: true, email: true } },
+        },
+      })
     })
+
+    // Revalidate affected routes
+    revalidatePath("/dashboard")
+    revalidatePath("/equipment")
+    
+    console.log(`✅ Request ${params.id} updated to ${status}, revalidated pages`)
 
     return successResponse(updated)
   } catch (error: any) {

@@ -1,12 +1,13 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 
 interface Equipment {
   id: string
@@ -43,11 +44,54 @@ export function MaintenanceRequestModal({
   const [technicianId, setTechnicianId] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [equipmentHealth, setEquipmentHealth] = useState<any>(null)
+  const [loadingHealth, setLoadingHealth] = useState(false)
 
   const selectedEquipment = equipment.find((e) => e.id === equipmentId)
   const availableTechnicians = selectedEquipment
     ? technicians.filter((t) => t.teamId === selectedEquipment.maintenanceTeamId)
     : []
+
+  // Fetch equipment health when equipment is selected for preventive maintenance
+  useEffect(() => {
+    if (equipmentId && requestType === "PREVENTIVE") {
+      loadEquipmentHealth()
+    } else {
+      setEquipmentHealth(null)
+    }
+  }, [equipmentId, requestType])
+
+  // Pre-fill scheduled date with suggested date from health evaluation
+  useEffect(() => {
+    if (
+      equipmentHealth?.health?.suggestedNextMaintenanceDate &&
+      requestType === "PREVENTIVE" &&
+      !scheduledDate
+    ) {
+      // Convert to datetime-local format (YYYY-MM-DDTHH:MM)
+      const suggestedDate = new Date(equipmentHealth.health.suggestedNextMaintenanceDate)
+      suggestedDate.setHours(9, 0) // Default to 9 AM
+      const formattedDate = suggestedDate.toISOString().slice(0, 16)
+      setScheduledDate(formattedDate)
+    }
+  }, [equipmentHealth, requestType])
+
+  async function loadEquipmentHealth() {
+    if (!equipmentId) return
+
+    setLoadingHealth(true)
+    try {
+      const res = await fetch(`/api/equipment/${equipmentId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setEquipmentHealth(data)
+      }
+    } catch (error) {
+      console.error("Failed to load equipment health:", error)
+    } finally {
+      setLoadingHealth(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,6 +115,7 @@ export function MaintenanceRequestModal({
       setScheduledDate("")
       setDurationHours("")
       setTechnicianId("")
+      setEquipmentHealth(null)
       onOpenChange(false)
     } catch (err: any) {
       setError(err.message || "Failed to create request")
@@ -135,13 +180,28 @@ export function MaintenanceRequestModal({
 
           {requestType === "PREVENTIVE" && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">Scheduled Date</label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Scheduled Date</label>
+                {loadingHealth && (
+                  <span className="text-xs text-muted-foreground">Loading suggestion...</span>
+                )}
+                {equipmentHealth?.health?.suggestedNextMaintenanceDate && !loadingHealth && (
+                  <Badge variant="secondary" className="text-xs">
+                    AI Suggested
+                  </Badge>
+                )}
+              </div>
               <Input
                 type="datetime-local"
                 value={scheduledDate}
                 onChange={(e) => setScheduledDate(e.target.value)}
                 required
               />
+              {equipmentHealth?.health?.suggestedNextMaintenanceDate && (
+                <p className="text-xs text-muted-foreground">
+                  Suggested based on {equipmentHealth.health.metrics.averagePreventiveInterval}-day average interval
+                </p>
+              )}
             </div>
           )}
 
